@@ -190,6 +190,7 @@ export
     plot_spatial_graph,
     plot_tessellation_map,
     show_map,
+    open_in_browser,
     plot_hsi_map,
     plot_diffusion_map,
     plot_residence_time_map,
