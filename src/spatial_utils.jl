@@ -1041,9 +1041,12 @@ function load_open_bathymetry(;
     # Check for GeoData or file-based ingestion
     if source in (:etopo, :etopo2022, :geodata, "etopo", "etopo2022", "geodata")
         try
-            bathy_ds = GeoDataSources.fetch_erddap_bathymetry(
-                lon_range = (min_lon, max_lon),
-                lat_range = (min_lat, max_lat),
+            bathy_file = joinpath("inputs", "bathymetry.zarr")
+            bounds = ((min_lon, max_lon), (min_lat, max_lat))
+            bathy_ds = GeoData.geoget(
+                "erddap://ETOPO_2022_v1_15s";
+                cache_dir = "inputs",
+                bounds = bounds,
                 verbose = false
             )
             itp = GeoData.get_bathymetry_interpolator(bathy_ds)
@@ -1052,7 +1055,7 @@ function load_open_bathymetry(;
             end
             loaded_from_file = true
         catch err
-            @warn "Failed to fetch GeoData bathymetry: $(err). Falling back to file/synthetic."
+            @warn "Failed to load GeoData bathymetry: $(err). Falling back to file/synthetic."
         end
     elseif source isa AbstractString && (endswith(lowercase(source), ".zarr") || endswith(lowercase(source), ".nc")) && ispath(source)
         try

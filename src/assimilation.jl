@@ -55,7 +55,7 @@ with the lakehouse somewhere else.
 function movement_store_root()::String
     override = get(ENV, "MOVEMENT_STORE_ROOT", "")
     isempty(override) || return abspath(override)
-    return normpath(joinpath(@__DIR__, "..", "..", "lakehouse", "GeoMotion"))
+    return GeoData.lakehouse_dir("GeoMotion")
 end
 
 """

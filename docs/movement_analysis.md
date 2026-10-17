@@ -1,4 +1,4 @@
-﻿# Movement Analysis: Pipeline Guide & Technical Reference
+# Movement Analysis: Pipeline Guide & Technical Reference
 
 ---
 
@@ -435,7 +435,29 @@ output/
 
 ---
 
-## 9. Scientific References
+## 9. Shared Lakehouse Configuration
+
+`GeoMotion` accesses environmental datasets (such as bathymetry and hydrography) and
+assimilated tracking inputs via the shared lakehouse managed by `GeoData`:
+
+```julia
+using GeoData
+# Inspect the lakehouse directory for GeoMotion
+store_dir = GeoData.lakehouse_dir("GeoMotion")
+
+# Persistently set the shared lakehouse root for the workspace
+GeoData.set_lakehouse_dir!("/path/to/shared/lakehouse")
+```
+
+The location resolution hierarchy is:
+* `ENV["MOVEMENT_STORE_ROOT"]` or `ENV["GEODATA_LAKEHOUSE"]`.
+* `LocalPreferences.toml` (`[GeoData] lakehouse_dir`).
+* `~/.geodata/storage.toml` (`[storage] store_root`).
+* Proximity fallback (`projects/lakehouse/GeoMotion`).
+
+---
+
+## 10. Scientific References
 
 1. **GeoMotion**: Choi, J. (2025). *Bayesian Spatio-Temporal Models for
    Marine Ecology*.

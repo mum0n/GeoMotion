@@ -1,78 +1,57 @@
 # Snow Crab (Chionoecetes opilio) movement analysis
 # =============================================================================
 # Scotian Shelf snow crab mark-recapture dataset, resharded to a 5 km hexagonal
-# lattice and restricted to the 25-400 m benthic habitat band.
+# lattice and restricted to the 25-350 m benthic habitat band.
 #
-#   julia --project=. scripts/run_movement.jl --config=configs/snowcrab.toml
+#   julia --project=. GeoMotionRun.jl --config=configs/snowcrab.toml
 #
-# The dataset is identified entirely by the input files below; there is no
-# dataset-name switch. Every parameter here overrides the corresponding default
-# in `GeoMotionConfig`, and any flag passed on the command line overrides
-# this file. Anything omitted keeps its default.
+# Every parameter specified here overrides the default declared in
+# `GeoMotionConfig`, and command-line flags override this file.
+# =============================================================================
 
 # -----------------------------------------------------------------------------
 # Approaches to fit
 # -----------------------------------------------------------------------------
-#   telemetry            -- categorical mark-recapture transitions
-#   telemetry_and_survey -- joint NegBin survey density + telemetry
-#   agent                -- agent-based movement simulation
-#
-# The survey-dependent approach is omitted: the Scotian Shelf tagging
-# series carries no paired survey density file, so that likelihood would have
-# nothing to condition on. It is listed out rather than merely left to fail --
-# asking for one without a survey file is skipped, not an error. Add it back
-# together with `surveydata_file` if survey data becomes available.
+# Fitted mark-recapture telemetry transition kernel and forward agent projection.
+# "telemetry_and_survey" is omitted because no paired survey density file is supplied.
 model_modes = ["telemetry", "agent"]
 
 # -----------------------------------------------------------------------------
 # Input files
 # -----------------------------------------------------------------------------
-tagging_file = "data/tagging.jld2"   # mark-recapture release/recapture events
-hsi_file = "data/hsi.jld2"           # habitat suitability time series
-sppoly_file = "data/sppoly.jld2"     # spatial unit definitions
-
-# Optional paired survey density observations. Absent for this dataset, which is
-# why the survey-dependent approaches are not requested above.
-# surveydata_file = "data/surveydata.jld2"
+tagging_file = "data/tagging.jld2"   # Mark-recapture release/recapture events
+hsi_file = "data/hsi.jld2"           # Habitat suitability time series
+sppoly_file = "data/sppoly.jld2"     # Spatial polygon unit definitions
+# surveydata_file = "data/surveydata.jld2" # Paired survey observations (optional)
 
 # -----------------------------------------------------------------------------
 # Spatial domain
 # -----------------------------------------------------------------------------
-# The domain is not declared here: with no `bbox` it is derived from the extent
-# of the tagging data plus `bbox_padding_deg`. Uncomment to analyse a larger
-# area than the animals occupied, or to hold the domain fixed across scenarios.
+# Derived from telemetry observations with 0.25 deg buffer margin.
 # bbox = [-64.5, 43.0, -58.5, 47.5]
 bbox_padding_deg = 0.25
 
-# Land is identified from a global land/sea raster rather than a coastline
-# bundled with the package, so the same code works in any region.
+# Land is identified from a global land/sea raster rather than a bundled coastline,
+# supplemented by high-resolution Sable Island polygons.
 land_source = "landmask"
-land_mask_resolution = "l"   # c, l, i, h or f
+land_mask_resolution = "l"   # "c", "l", "i", "h", or "f"
 land_mask_grid_minutes = 5.0
-
-# Added to the raster, not a replacement for it. Sable Island is a 42 km sandbar
-# barely 1.5 km wide, and every bundled GMT raster classifies it as water:
-# probed at 5, 2.5 and 1.25 arc-min it reads water in all three, so no resolution
-# of this mask can resolve it. Its outline comes from OpenStreetMap relation
-# 8178153 (way 300676289, 71 vertices, ODbL).
 land_polygon_files = ["configs/geo/sable_island.geojson"]
 
-# The domain already needs resharded to honour the 5 km cells above.
+# Domain resharding and benthic depth constraints
 reshard_hex = false
 hex_radius_km = 5.0
 use_hydrodynamics = true
-depth_barrier_mode = "hsi_only"  # hsi_only | bathy_only | intersection
-depth_range = [25.0, 350.0]      # principal benthic habitat band, metres
+depth_barrier_mode = "hsi_only"  # "hsi_only" | "bathy_only" | "intersection"
+depth_range = [25.0, 350.0]      # Principal benthic habitat band in metres
 hsi_ood_floor = 0.01
 
 # -----------------------------------------------------------------------------
-# Path reconstruction
+# Path reconstruction & Routing
 # -----------------------------------------------------------------------------
-# Path reconstruction & Dynamic HSI Routing
-# -----------------------------------------------------------------------------
-max_paths = 25                       # trajectories to reconstruct
-path_methods = ["astar"]             # astar | viterbi, in any combination
-smooth_paths = true                  # marine line-of-sight smoothing
+max_paths = 25                   # Trajectories to reconstruct
+path_methods = ["astar"]         # Least-cost heuristic routing
+smooth_paths = true              # Marine line-of-sight smoothing
 
 # -----------------------------------------------------------------------------
 # Dynamic Environmental Features & Advanced Routing
@@ -80,34 +59,45 @@ smooth_paths = true                  # marine line-of-sight smoothing
 adaptive_mesh = false
 coarse_radius_km = 25.0
 fine_radius_km = 8.0
-dynamic_kernels = true               # enable time-varying seasonal HSI kernels
+dynamic_kernels = true           # Enable time-varying seasonal HSI kernels
 hmm_smoothing = false
+
+# -----------------------------------------------------------------------------
+# Habitat-Coupled Residency
+# -----------------------------------------------------------------------------
+rest_advantage = 0.0
+rest_advantage_form = "difference"
 
 # -----------------------------------------------------------------------------
 # Habitat Suitability & GeoData Environmental Sources
 # -----------------------------------------------------------------------------
-use_geodata_habitat = true           # query real physical habitat via GeoData
+use_geodata_habitat = true           # Query real physical habitat via GeoData
 temperature_source = "glorys12v1"    # Copernicus Marine GLORYS12V1 (1/12 deg)
 temperature_month = 0                # 0 for dynamic seasonal sequence / 1-12 for fixed
-bathymetry_source = "etopo2022"      # bathymetry elevation/depth source
-spatial_averaging = "polygon"        # polygon area average across vertices & centroid
-hsi_dynamic_method = "glorys_monthly"# time-varying bottom temperature series
-circuit_timescale = "annual_average" # steady-state DC current uses 12-month annual mean
+bathymetry_source = "etopo2022"      # Bathymetry elevation/depth source
+spatial_averaging = "polygon"        # Polygon area average across vertices & centroid
+hsi_dynamic_method = "glorys_monthly"# Time-varying bottom temperature series
+circuit_timescale = "annual_average" # Steady-state DC current uses 12-month annual mean
 
 # -----------------------------------------------------------------------------
-# Posterior inference
+# Forward Agent Projection
+# -----------------------------------------------------------------------------
+persistence = 0.0
+n_headings = 8
+n_agent_projections = 200
+agent_horizon = 50
+
+# -----------------------------------------------------------------------------
+# Posterior Inference (MCMC)
 # -----------------------------------------------------------------------------
 n_samples = 500
 n_warmup = 100
 seed = 42
 n_ensemble = 50
-# Random-walk proposal width, as a fraction of the prior scale. The default
-# Turing MH() draws proposals from the prior and accepts 0% of them on a
-# dataset this size, so the sampler is an explicit prior-scaled random walk.
 mh_proposal_scale = 0.05
 
 # -----------------------------------------------------------------------------
-# Habitat suitability uncertainty
+# Habitat Suitability Uncertainty
 # -----------------------------------------------------------------------------
 hsi_se = 0.08
 propagate_hsi_error = true
@@ -116,20 +106,12 @@ add_structural_uncertainty = false
 structural_uncertainty_scale = 0.05
 
 # -----------------------------------------------------------------------------
-# Diagnostics
+# Diagnostics & Downstream Analysis
 # -----------------------------------------------------------------------------
-#   circuit           -- current density and pinch points
-#   stochastic        -- stochastic least-cost path ensembles
-#   bottlenecks       -- domain-wide bottleneck index
-#   validation        -- path CIs, connectivity, posterior predictive checks
-#   bayesian_ensemble -- full posterior path and corridor ensembles
-#
-# bayesian_ensemble is omitted: it re-fits the posterior for every draw and
-# dominates runtime, which is not worth paying for a first pass.
 diagnostics = ["circuit", "stochastic", "bottlenecks", "validation"]
 
 # -----------------------------------------------------------------------------
-# Output and reporting
+# Output & Visualization
 # -----------------------------------------------------------------------------
 species_name = "Snow Crab"
 render_html = true
@@ -137,25 +119,11 @@ output_dir = "output"
 resume_from_checkpoint = false
 dark_mode = false
 cmap = "viridis"
-font = "Inter, system-ui, sans-serif"
+overlay_hsi = false
 verbose = true
 
 # -----------------------------------------------------------------------------
-# Stock connectivity regions
+# Stock Connectivity Regions
 # -----------------------------------------------------------------------------
-# Management units and their boundaries are dataset-specific, so they belong in
-# this file rather than in the code. Supply one polygon file per label and the
-# unit-to-region assignment is derived from them. Supported formats, by
-# extension: .csv (long format, `lon`/`lat` plus an optional `region` column),
-# .jld2, .rds/.RData, .shp, .geojson/.json.
-#
-# region_labels = ["Gulf", "Cape Breton", "Escuminac"]
-# region_polygon_files = [
-#     "configs/regions/gulf.geojson",
-#     "configs/regions/cape_breton.geojson",
-#     "configs/regions/escuminac.geojson",
-# ]
 region_labels = []
 region_polygon_files = []
-# Optional explicit unit -> region index assignment; fills gaps only.
-# region_map = {1 => 1, 2 => 1, 3 => 2}

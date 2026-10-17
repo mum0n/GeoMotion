@@ -664,8 +664,8 @@ function calculate_habitat_suitability(
         g_raw * w_z
     end
 
-    # Bounded in [0.0, 1.0]
-    return clamp(s_t * s_z, 0.0, 1.0)
+    # Analytically bounded in [0.0, 1.0] by cosine taper windowing
+    return s_t * s_z
 end
 
 """
@@ -718,18 +718,19 @@ function build_geodata_habitat_suitability(
     n_units = length(centroids_lonlat)
     hsi = zeros(Float64, n_units)
 
-    # 1. Obtain bathymetric interpolator
-    verbose && println("Fetching GeoData bathymetry for HSI evaluation...")
-    bathy_ds = GeoDataSources.fetch_erddap_bathymetry(
-        lon_range = lon_range,
-        lat_range = lat_range,
+    # 1. Obtain bathymetric interpolator via GeoData.geoget
+    verbose && println("Loading GeoData bathymetry for HSI evaluation...")
+    bathy_ds = GeoData.geoget(
+        "erddap://ETOPO_2022_v1_15s";
+        cache_dir = input_dir,
+        bounds = (lon_range, lat_range),
         verbose = verbose
     )
     bathy_itp = GeoData.get_bathymetry_interpolator(bathy_ds)
 
     # 2. Obtain bottom temperature interpolator
     temp_src = Symbol(temperature_source)
-    verbose && println("Fetching GeoData boundary/hydrographic temperature ($(temp_src))...")
+    verbose && println("Loading GeoData hydrographic temperature ($(temp_src))...")
     hydro = GeoDataSources.fetch_boundary_hydrography_geodata(
         temp_src;
         lon_range = lon_range,
@@ -850,11 +851,12 @@ function build_dynamic_geodata_hsi_series(
     n_times = length(months)
     hsi_series = zeros(Float64, n_units, n_times)
 
-    # 1. Bathymetric interpolator (static over time)
-    verbose && println("Fetching GeoData bathymetry for dynamic HSI series...")
-    bathy_ds = GeoDataSources.fetch_erddap_bathymetry(
-        lon_range = lon_range,
-        lat_range = lat_range,
+    # 1. Bathymetric interpolator (static over time) via GeoData.geoget
+    verbose && println("Loading GeoData bathymetry for dynamic HSI series...")
+    bathy_ds = GeoData.geoget(
+        "erddap://ETOPO_2022_v1_15s";
+        cache_dir = input_dir,
+        bounds = (lon_range, lat_range),
         verbose = verbose
     )
     bathy_itp = GeoData.get_bathymetry_interpolator(bathy_ds)

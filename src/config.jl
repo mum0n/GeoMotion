@@ -126,7 +126,6 @@ Base.@kwdef struct GeoMotionConfig
     spatial_averaging::String = "polygon"
     hsi_dynamic_method::String = "glorys_monthly"
     circuit_timescale::String = "annual_average"
-    lakehouse_catalog::Union{Nothing, String} = nothing
 
     # --- Agent forward projection --------------------------------------------
     # Heading persistence for the agent projection, kappa in
@@ -172,12 +171,6 @@ Base.@kwdef struct GeoMotionConfig
     dark_mode::Bool = false
     cmap::Symbol = :viridis
     overlay_hsi::Bool = false
-    # NOT YET APPLIED. The dashboard CSS sets `--font-main` to a hardcoded stack
-    # inside `_generate_leaflet_html_document`, and no panel forwards this value
-    # there, so setting it has no effect. Wiring it means adding a keyword to all
-    # 19 `leaflet_*` functions or threading it through their `kwargs`. Recorded in
-    # `todo.md` rather than silently left looking functional.
-    font::String = "Inter, system-ui, sans-serif"
     verbose::Bool = true
 
     # --- Stock connectivity regions ------------------------------------------
@@ -726,12 +719,6 @@ function create_argparse_settings()::ArgParseSettings
             dest_name = "overlay_hsi"
             help = "Overlay Habitat Suitability Index on maps (default: false)."
             arg_type = Bool
-        "--font"
-            dest_name = "font"
-            help = "NOT YET APPLIED: main font stack for dashboards. The dashboard " *
-                   "CSS currently hardcodes its own, so this has no effect."
-            arg_type = String
-            metavar = "CSS"
         "--region-labels"
             dest_name = "region_labels"
             help = "Comma-separated region of interest names."

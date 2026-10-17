@@ -4148,6 +4148,7 @@ function run_movement_analysis(
         diagnostics_r        = rc["diagnostics"]
         validation_r         = rc["validation"]
         agent_trajectories_r = rc["agent_trajectories"]
+        agent_space_use_r    = get(rc, "agent_space_use", nothing)
 
         # Force render_html on so figures are actually written.
         params_render = merge(params, (render_html = true,))
@@ -4336,6 +4337,7 @@ function run_movement_analysis(
             "diagnostics",        diagnostics,
             "validation",         validation,
             "agent_trajectories", agent_trajectories,
+            "agent_space_use",    agent_space_use,
         )
     catch e
 _record_panel_skip("Results checkpoint write", e); params.verbose && println(
